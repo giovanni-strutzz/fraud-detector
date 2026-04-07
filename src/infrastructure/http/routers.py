@@ -11,11 +11,16 @@ from src.infrastructure.config import settings
 
 router = APIRouter(prefix="/transfers", tags=["Transfers"])
 
+_global_kafka_publisher = KafkaPublisher(bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS)
+
 def get_use_case():
+    database_adapter = DatabaseAdapter()
 
-    publisher = KafkaPublisher(bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS)
-
-    return RequestTransfer(publisher=publisher, topic=settings.KAFKA_TOPIC_TRANSFERS)
+    return RequestTransfer(
+        publisher=_global_kafka_publisher,
+        topic=settings.KAFKA_TOPIC_TRANSFERS,
+        db_repository=database_adapter
+    )
 
 def get_balance_use_case():
     db = DatabaseAdapter()
@@ -50,6 +55,9 @@ async def request_transfer(
         destination_bank_code=str(payload.destination_bank_code)
     )
 
-    result = await use_case.execute(command)
+    try:
+        result = await use_case.execute(command)
 
-    return result
+        return result
+    except ValueError as vex:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(vex))

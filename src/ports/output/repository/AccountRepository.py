@@ -16,6 +16,10 @@ class AccountRepository(ABC):
     async def update_embedding(self, account_id: str, embedding: list[float]) -> None:
         pass
 
+    @abstractmethod
+    async def calculate_behavior_distance(self, account_id: str, transaction_embedding: list[float]) -> float | None:
+        pass
+
 
 class CacheRepository(ABC):
 
