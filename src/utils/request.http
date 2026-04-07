@@ -1,0 +1,29 @@
+### 1. Verificar se a API está no ar
+GET http://localhost:8000/health
+Accept: application/json
+
+### 2. Consultar o saldo atual (CQRS - Lado da Leitura)
+# Vai retornar R$ 1500.50 se você rodou o test_adapters.py
+# Observe no retorno que a "source" deve vir como "postgres-db" na 1ª vez e "redis-cache" na 2ª vez
+GET http://localhost:8000/transfers/accounts/conta-12345/balance
+Accept: application/json
+
+### 3. Solicitar uma Transferência (CQRS - Lado da Escrita)
+# Retorna 202 Accepted instantaneamente, pois apenas enfileira no Kafka
+POST http://localhost:8000/transfers/transfer/
+Content-Type: application/json
+
+{
+  "origin_account_id": "conta-12345",
+  "destination_account_id": "conta-98765",
+  "origin_document": "11122233344",
+  "destination_document": "99988877766",
+  "amount": 250.50,
+  "origin_bank_code": "001",
+  "destination_bank_code": "999"
+}
+
+### 4. Consultar o Saldo Novamente após o processamento
+# Deve retornar R$ 1250.00, atualizado pelo nosso Worker do Kafka!
+GET http://localhost:8000/transfers/accounts/conta-12345/balance
+Accept: application/json
