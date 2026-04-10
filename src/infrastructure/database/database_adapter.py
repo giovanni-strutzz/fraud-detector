@@ -1,7 +1,7 @@
 import logging
 
 from typing import Optional
-from sqlalchemy import select
+from sqlalchemy import select, text
 from src.ports.output.repository.AccountRepository import AccountRepository
 from src.infrastructure.database.base import AsyncSessionLocal, AccountModel
 
@@ -58,3 +58,26 @@ class DatabaseAdapter(AccountRepository):
             except Exception as exc:
                 logger.error(f"Error updating embedding for {account_id}: Error: {exc}")
                 raise
+
+
+    async def calculate_behavior_distance(self, account_id: str, transaction_embedding: list[float]) -> float | None:
+        async with AsyncSessionLocal() as session:
+            try:
+                embedding_str = f"[{','.join(map(str, transaction_embedding))}]"
+
+                query = text("""
+                    SELECT transaction_behavior_embedding <-> CAST(:embedding AS vector) AS distance
+                    FROM accounts
+                    WHERE account_id = :account_id
+                """)
+
+                result = await session.execute(query, {"embedding": embedding_str, "account_id": account_id})
+                row = result.fetchone()
+
+                if row and row[0] is not None:
+                    return float(row[0])
+
+                return None
+            except Exception as exc:
+                logger.error(f"Error calculating behavior distance for {account_id}: Error: {exc}")
+                return None

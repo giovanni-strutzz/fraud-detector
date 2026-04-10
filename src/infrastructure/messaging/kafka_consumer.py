@@ -60,6 +60,9 @@ class TransformerConsumer:
 
         print(f"Started Worker. Listener topics: {settings.KAFKA_TOPIC_TRANSFERS}")
 
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
         try:
             while True:
                 msg = self.consumer.poll(timeout=1.0)
@@ -73,6 +76,7 @@ class TransformerConsumer:
                         print(msg.error())
                     break
 
-                asyncio.run(self.process_message(msg))
+                loop.run_until_complete(self.process_message(msg))
         finally:
             self.consumer.close()
+            loop.close()
